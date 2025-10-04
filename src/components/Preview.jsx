@@ -1,152 +1,9 @@
-// import React, { useEffect, useRef, useState } from 'react'
-// import * as Babel from '@babel/standalone'
-// import * as ReactNativeWeb from 'react-native-web'
-// import { createRoot } from 'react-dom/client'
 
-// // A tiny in-browser bundler/runtime that compiles multiple Explorer files together
-// // and executes the app entry (App.js/index.js or first file) using a CommonJS-like loader.
-// export default function Preview({ files = [] }) {
-//   const mountRef = useRef(null)
-//   const rootRef = useRef(null)
-//   const [error, setError] = useState(null)
-
-//   // Build a module map keyed by normalized names (exact file names as provided)
-//   const buildModuleMap = () => {
-//     const map = {}
-//     for (const f of files) {
-//       const name = (f.name && f.name.trim()) || `file-${f.id}.js`
-//       map[name] = f.content || ''
-//     }
-//     return map
-//   }
-
-//   // Try to resolve an import id to a key in the module map
-//   const resolveKey = (map, id) => {
-//     if (map[id]) return id
-//     if (map['./' + id]) return './' + id
-//     if (map[id + '.js']) return id + '.js'
-//     if (map[id + '.jsx']) return id + '.jsx'
-//     if (map['./' + id + '.js']) return './' + id + '.js'
-//     if (map['./' + id + '.jsx']) return './' + id + '.jsx'
-//     // try basename match
-//     const keys = Object.keys(map)
-//     const match = keys.find((k) => k.endsWith('/' + id) || k.endsWith('/' + id + '.js') || k.endsWith('/' + id + '.jsx'))
-//     if (match) return match
-//     return null
-//   }
-
-//   const transformModule = (code) => {
-//     try {
-//       // transform JSX/ES modules to CommonJS using babel-standalone
-//       const out = Babel.transform(code, {
-//         presets: ['react'],
-//         plugins: ['transform-modules-commonjs'],
-//         sourceMaps: 'inline',
-//       })
-//       return out.code
-//     } catch (err) {
-//       throw err
-//     }
-//   }
-
-//   const run = () => {
-//     setError(null)
-//     const map = buildModuleMap()
-
-//     // simple module cache
-//     const cache = {}
-
-//     const requireFactory = (basedir) => {
-//       const require = (id) => {
-//         // externals
-//         if (id === 'react') return React
-//         if (id === 'react-native') return ReactNativeWeb
-
-//         // resolve in-module map
-//         const key = resolveKey(map, id)
-//         if (!key) throw new Error(`Module not found: ${id}`)
-
-//         if (cache[key] && cache[key].exports) return cache[key].exports
-
-//         const module = { exports: {} }
-//         cache[key] = module
-
-//         const code = map[key]
-//         const transformed = transformModule(code)
-
-//         // execute module in a Function scope
-//         const fn = new Function('require', 'module', 'exports', transformed)
-//         fn(requireFactory(key), module, module.exports)
-//         return module.exports
-//       }
-//       return require
-//     }
-
-//     try {
-//       // find entry
-//       const entryCandidates = ['App.js', 'App.jsx', 'index.js', 'index.jsx']
-//       let entry = null
-//       for (const c of entryCandidates) if (map[c]) { entry = c; break }
-//       if (!entry) entry = Object.keys(map)[0]
-//       if (!entry) throw new Error('No files to run')
-
-//       const require = requireFactory('/')
-//       const exported = require(entry)
-
-//       // exported can be a React component (default export) or a React element
-//       const AppComponent = exported && (exported.default || exported) || null
-
-//       if (!mountRef.current) return
-//       // cleanup previous root
-//       if (rootRef.current) {
-//         try { rootRef.current.unmount() } catch (e) { /* ignore */ }
-//         rootRef.current = null
-//       }
-//       const root = createRoot(mountRef.current)
-//       rootRef.current = root
-//       root.render(React.createElement(AppComponent))
-//     } catch (err) {
-//       console.error('Preview runtime error', err)
-//       setError(err.message || String(err))
-//     }
-//   }
-
-//   useEffect(() => {
-//     // run when files change
-//     run()
-
-//     return () => {
-//       if (rootRef.current) {
-//         try { rootRef.current.unmount() } catch (e) { /* ignore */ }
-//         rootRef.current = null
-//       }
-//     }
-//     // eslint-disable-next-line react-hooks/exhaustive-deps
-//   }, [files])
-
-//   return (
-//     <div className="w-full h-full bg-white" style={{ position: 'relative' }}>
-//       {error && (
-//         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', color: 'white', padding: 12, zIndex: 50 }}>
-//           <div style={{ fontWeight: 700, marginBottom: 8 }}>Preview error</div>
-//           <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{error}</pre>
-//         </div>
-//       )}
-//       <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
-//     </div>
-//   )
-// }
 import { useEffect, useRef, useMemo } from 'react'
 import * as Babel from '@babel/standalone'
 import * as ReactNative from 'react-native-web'
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-
-// Simple in-browser bundler/runtime for the playground
-// - Accepts `files` array: [{ id, name, content }]
-// - Builds a module map keyed by filename
-// - Transforms each module with Babel (jsx -> js)
-// - Executes the chosen entry module and renders default export
 
 function buildModuleMap(files = []) {
   const map = {}
@@ -294,15 +151,19 @@ export default function Preview({ files = [] }) {
         mountRef.current.appendChild(pre)
       }
     }
-  }, [moduleMap, files])
+    // cleanup: unmount react root when moduleMap changes or component unmounts
+    return () => {
+      if (rootRef.current) {
+        try { rootRef.current.unmount() } catch (e) { /* ignore */ }
+        rootRef.current = null
+      }
+    }
+  }, [moduleMap])
 
   return (
-    <div className="flex-none min-w-[20rem] border-l border-[#3C3C3C] h-full bg-white flex flex-col">
-      <div className="px-3 py-2 border-b border-[#3C3C3C] flex items-center justify-between">
-        <div className="text-sm text-[#D4D4D4] font-medium">Preview</div>
-      </div>
-      <div className="flex-1 overflow-auto p-3">
-        <div ref={mountRef} className="w-full rounded-md overflow-auto" />
+    <div className="flex-none h-full bg-white flex flex-col rounded-xl">
+      <div className="flex-1 overflow-auto border-4 border-red-400 rounded-xl">
+        <div ref={mountRef} className="w-full overflow-auto rounded-md" />
       </div>
     </div>
   )

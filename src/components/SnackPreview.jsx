@@ -4,39 +4,7 @@ import Preview from './Preview'
 
 // SnackPreview: publishes files to Snack and shows the web player URL in an iframe.
 // Adds debounced auto-publish when `open` is true. Provides manual publish control.
-// small inline styles to mimic a phone chrome
-const styles = {
-  deviceOuter: {
-    width: '360px',
-    height: '720px',
-    background: '#000',
-    borderRadius: '36px',
-    padding: '10px',
-    boxSizing: 'border-box',
-  },
-  deviceInner: {
-    width: '100%',
-    height: '100%',
-    background: '#fff',
-    borderRadius: '28px',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  notch: {
-    height: '24px',
-    width: '120px',
-    background: '#111',
-    borderRadius: '12px',
-    margin: '8px auto 0',
-  },
-  spinner: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    transform: 'translate(-50%, -50%)',
-    color: '#fff',
-  },
-}
+// Uses Tailwind CSS utility classes for the phone chrome layout.
 export default function SnackPreview({ files = [], open, onClose, debounceMs = 1000, embedded = false }) {
   const [url, setUrl] = useState(null)
   const [expUrl, setExpUrl] = useState(null)
@@ -44,10 +12,6 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
   const [error, setError] = useState(null)
   const [autoPublish, setAutoPublish] = useState(true)
   const [lastPublishedAt, setLastPublishedAt] = useState(null)
-  const [platform, setPlatform] = useState('web')
-  const [orientation, setOrientation] = useState('portrait')
-  const [connectedClients, setConnectedClients] = useState(0)
-  const [logs, setLogs] = useState([])
   const [live, setLive] = useState(false) // when true, tries to go online and open transports (websocket)
 
   const timerRef = useRef(null)
@@ -55,8 +19,6 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
   const publishIdRef = useRef(0)
   const snackRef = useRef(null)
   const iframeRef = useRef(null)
-  const stateListenerRef = useRef(null)
-  const logListenerRef = useRef(null)
 
   useEffect(() => {
     mountedRef.current = true
@@ -223,11 +185,11 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
   if (embedded) {
     // Render as an always-visible right-side phone preview
     return (
-      <div className="flex-none w-[380px] border-l border-[#3C3C3C] h-full bg-white flex flex-col">
-        <div className="px-3 py-2 border-b flex items-center justify-between">
-          <div className="text-sm text-[#111] font-medium">Phone Preview</div>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm">
+      <div className="flex-none w-[380px] border-l border-[#3C3C3C] h-full bg-black flex flex-col">
+        <div className="px-3 py-2 border flex items-center justify-between border-[#3C3C3C]">
+          <div className="text-sm text-white font-bold">Phone Preview</div>
+          <div className="flex items-center gap-3 text-white">
+            <label className="flex items-center gap-2 text-sm ">
               <input type="checkbox" checked={autoPublish} onChange={(e) => setAutoPublish(e.target.checked)} />
               Auto
             </label>
@@ -236,29 +198,18 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
               Live
             </label>
             <button onClick={doPublish} disabled={loading} className="px-3 py-1 rounded bg-gray-200 text-sm">{loading ? 'Publishing...' : 'Publish'}</button>
-            {expUrl && (
-              <button
-                onClick={() => window.open(expUrl)}
-                className="px-3 py-1 rounded bg-green-500 text-white text-sm"
-              >
-                Open in Expo Go
-              </button>
-            )}
           </div>
         </div>
 
-        <div className="flex-1 p-3 flex items-center justify-center">
-            <div style={styles.deviceOuter} className="relative">
-              <div style={styles.deviceInner}>
-                <div style={styles.notch} />
-                <div style={{ position: 'absolute', inset: 0 }}>
+        <div className="flex-1 p-2 flex items-center justify-center">
+            <div className="relative w-[300px] h-[600px] bg-red-400 rounded-[30px] p-2 box-border">
+              <div className="w-full h-full rounded-[30px] overflow-hidden relative">
+                <div className="absolute inset-0">
                   {url ? (
                     <iframe
                       ref={iframeRef}
                       src={url}
-                      title="Snack Preview"
                       className="w-full h-full border-0"
-                      style={{ display: 'block', width: '100%', height: '100%' }}
                     />
                   ) : (
                     // Fallback to local preview runner so users always see something
@@ -268,7 +219,7 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
                   )}
                 </div>
                 {loading && (
-                  <div style={styles.spinner} className="text-sm">
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-sm">
                     Publishing...
                   </div>
                 )}
@@ -278,53 +229,4 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
       </div>
     )
   }
-
-  // Fallback: modal rendering (if not embedded)
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-      <div className="w-[90%] h-[90%] bg-white rounded-md overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-3 py-2 border-b">
-          <div className="font-semibold">Snack Preview</div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={autoPublish} onChange={(e) => setAutoPublish(e.target.checked)} />
-                Auto-publish
-              </label>
-              <button onClick={doPublish} disabled={loading} className="px-3 py-1 rounded bg-gray-200">{loading ? 'Publishing...' : 'Publish now'}</button>
-            </div>
-            <button onClick={onClose} className="px-3 py-1 rounded bg-gray-200">Close</button>
-          </div>
-        </div>
-
-        <div className="flex-1 flex">
-          <div className="w-64 border-r p-3">
-            <div className="text-sm mb-2">Status</div>
-            <div className="text-xs text-gray-600 mb-2">{loading ? 'Publishing...' : (lastPublishedAt ? `Last published: ${lastPublishedAt.toLocaleTimeString()}` : 'Not published yet')}</div>
-            {error && <div className="text-red-500 text-sm">{error}</div>}
-            {url && (
-              <div className="mt-3">
-                <a href={url} target="_blank" rel="noreferrer" className="text-blue-600 underline">Open in Snack</a>
-              </div>
-            )}
-            {expUrl && (
-              <div className="mt-3">
-                <button onClick={() => window.open(expUrl)} className="text-white bg-green-500 px-2 py-1 rounded text-sm">Open in Expo Go</button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1">
-            {url ? (
-                <iframe ref={iframeRef} src={url} title="Snack Preview" className="w-full h-full border-0" />
-            ) : (
-              <div className="w-full h-full">
-                <Preview files={files} />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 }
