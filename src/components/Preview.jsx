@@ -162,7 +162,7 @@ export default function Preview({ files = [] }) {
 
   return (
     <div className="flex-none h-full bg-white flex flex-col rounded-xl">
-      <div className="flex-1 overflow-auto border-4 border-red-400 rounded-xl">
+      <div className="flex-1 overflow-auto border-4 border-gray-500 rounded-xl">
         <div ref={mountRef} className="w-full overflow-auto rounded-md" />
       </div>
     </div>

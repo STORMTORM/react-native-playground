@@ -6,6 +6,8 @@ import Explorer from "./components/Explorer";
 import CodeEditor from "./components/CodeEditor";
 import { getLanguageFromName } from "./LanguageHandler";
 import SnackPreview from "./components/SnackPreview";
+import { supabase } from './lib/supabaseClient'
+import { useEffect } from 'react'
 
 function App() {
   const [files, setFiles] = useState([
@@ -56,6 +58,41 @@ Place image and asset files here. The preview supports referencing assets by pat
   ])
   const [activeId, setActiveId] = useState('app-js');
   const [snackOpen, setSnackOpen] = useState(false);
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    let mounted = true
+    // get current session user
+    const init = async () => {
+      try {
+        const { data } = await supabase.auth.getUser()
+        if (!mounted) return
+        setUser(data.user ?? null)
+      } catch (e) {
+        // ignore
+      }
+    }
+    init()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      mounted = false
+      try { subscription?.unsubscribe() } catch (e) { /* ignore */ }
+    }
+  }, [])
+
+  const handleSignIn = async () => {
+    // Open OAuth redirect to GitHub via Supabase
+    await supabase.auth.signInWithOAuth({ provider: 'github' })
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
 
   const handleOpenFile = (id) => {
     setActiveId(id);
@@ -161,13 +198,59 @@ Place image and asset files here. The preview supports referencing assets by pat
     }))
   }
 
+  // Save current workspace to Supabase (table: workspaces)
+  const saveWorkspace = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      const user = userData?.user
+      if (!user) return alert('Please sign in to save your workspace')
+
+      // Upsert workspace identified by user_id + name
+      const payload = {
+        user_id: user.id,
+        name: projectName || 'project',
+        files,
+      }
+
+      // Try upsert; requires a unique constraint on (user_id, name) in the DB
+      const { data, error } = await supabase.from('workspaces').upsert(payload, { onConflict: 'user_id,name' }).select()
+      if (error) throw error
+      alert('Workspace saved')
+      return data
+    } catch (err) {
+      console.error('Save failed', err)
+      alert('Save failed: ' + (err.message || err))
+    }
+  }
+
+  // Load latest workspace for the current user (by updated_at)
+  const loadLatestWorkspace = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      const user = userData?.user
+      if (!user) return alert('Please sign in to load your workspace')
+
+      const { data, error } = await supabase.from('workspaces').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(1)
+      if (error) throw error
+      if (!data || data.length === 0) return alert('No workspace found')
+      const ws = data[0]
+      if (ws.files) setFiles(ws.files)
+      if (ws.name) handleRenameProject(ws.name)
+      alert('Workspace loaded')
+      return ws
+    } catch (err) {
+      console.error('Load failed', err)
+      alert('Load failed: ' + (err.message || err))
+    }
+  }
+
   // Preview will now compile and run all files provided by the Explorer
   // The entry file is chosen automatically inside Preview (App.js, index.js or the first file)
 
   return (
     <div className="flex-1">
-  <Nav onOpenSnack={() => setSnackOpen(true)} onShare={handleShare} projectName={projectName} onRenameProject={handleRenameProject} />
-      <div className="flex h-[calc(100vh-52px)]">
+  <Nav onOpenSnack={() => setSnackOpen(true)} onShare={handleShare} projectName={projectName} onRenameProject={handleRenameProject} user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} onSaveWorkspace={saveWorkspace} onLoadWorkspace={loadLatestWorkspace} />
+      <div className="flex h-[calc(100vh-48px)]">
         <div className="flex-1 flex">
           <Explorer
             files={files}

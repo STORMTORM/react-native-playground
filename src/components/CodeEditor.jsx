@@ -24,7 +24,7 @@ function CodeEditor({ value = '', onChange = () => {}, language = 'javascript', 
       <Editor
         // height="calc(100vh - 260px)"
         width="100%"
-        height="calc(100vh - 98px)"
+        height="calc(100vh - 94px)"
         theme="vs-dark"
         language={language}
         value={value}

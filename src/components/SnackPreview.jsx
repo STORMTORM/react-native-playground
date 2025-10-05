@@ -188,7 +188,7 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
       <div className="flex-none w-[380px] border-l border-[#3C3C3C] h-full bg-black flex flex-col">
         <div className="px-3 py-2 border flex items-center justify-between border-[#3C3C3C]">
           <div className="text-sm text-white font-bold">Phone Preview</div>
-          <div className="flex items-center gap-3 text-white">
+          {/* <div className="flex items-center gap-3 text-white">
             <label className="flex items-center gap-2 text-sm ">
               <input type="checkbox" checked={autoPublish} onChange={(e) => setAutoPublish(e.target.checked)} />
               Auto
@@ -198,11 +198,11 @@ export default function SnackPreview({ files = [], open, onClose, debounceMs = 1
               Live
             </label>
             <button onClick={doPublish} disabled={loading} className="px-3 py-1 rounded bg-gray-200 text-sm">{loading ? 'Publishing...' : 'Publish'}</button>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex-1 p-2 flex items-center justify-center">
-            <div className="relative w-[300px] h-[600px] bg-red-400 rounded-[30px] p-2 box-border">
+            <div className="relative w-[300px] h-[600px] bg-gray-500 rounded-[30px] p-2 box-border">
               <div className="w-full h-full rounded-[30px] overflow-hidden relative">
                 <div className="absolute inset-0">
                   {url ? (
