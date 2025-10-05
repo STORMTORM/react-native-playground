@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { VscPlay, VscSave, VscShare, VscColorMode } from 'react-icons/vsc'
 import logo from '../assets/logo.png'
 
 function Navbar({ onRun, onSave, onShare, onOpenSnack, onSelectExample, theme, onToggleTheme, projectName, onRenameProject, user, onSignIn, onSignOut, onSaveWorkspace, onLoadWorkspace }) {

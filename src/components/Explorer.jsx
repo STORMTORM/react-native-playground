@@ -1,4 +1,3 @@
-import { VscNewFile } from 'react-icons/vsc'
 import { getIconForName } from '../LanguageHandler'
 import { useState, useRef, useEffect, useMemo } from 'react'
 
